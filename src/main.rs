@@ -13,10 +13,7 @@ mod app {
     use bbqueue::framed::{FrameConsumer, FrameProducer};
     use bbqueue::{BBBuffer, Consumer, Producer};
     use byteorder::{ByteOrder, LittleEndian};
-    use electricui_embedded::{
-        wire::{Framing, Packet},
-        Decoder, MessageId, MessageType,
-    };
+    use electricui_embedded::prelude::*;
     use err_derive::Error;
     use log::{error, info, warn};
     use rtt_logger::RTTLogger;
