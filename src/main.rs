@@ -351,7 +351,7 @@ mod app {
         value: u8,
     ) -> Result<(), Error> {
         let mut p = Packet::new_unchecked(&mut buf[..]);
-        p.set_data_length(MessageType::U8.data_wire_size(1) as _)?;
+        p.set_data_length(MessageType::U8.wire_size_hint() as _)?;
         p.set_typ(MessageType::U8);
         p.set_internal(true);
         p.set_offset(false);
@@ -368,7 +368,7 @@ mod app {
 
     fn send_board_id(buf: &mut [u8], prod: &mut FrameProducer<DMA_TX_Q_SIZE>) -> Result<(), Error> {
         let mut p = Packet::new_unchecked(&mut buf[..]);
-        p.set_data_length(MessageType::U16.data_wire_size(1) as _)?;
+        p.set_data_length(MessageType::U16.wire_size_hint() as _)?;
         p.set_typ(MessageType::U16);
         p.set_internal(true);
         p.set_offset(false);
@@ -405,7 +405,8 @@ mod app {
 
     fn send_id_list(buf: &mut [u8], prod: &mut FrameProducer<DMA_TX_Q_SIZE>) -> Result<(), Error> {
         // NULL delimited list of ids
-        let data_len = LED_BLINK.len() + LED_STATE.len() + LIT_TIME.len() + BOARD_NAME.len() + 4;
+        let data_len =
+            LED_BLINK.len() + LED_STATE.len() + LIT_TIME.len() + MessageId::BOARD_NAME.len() + 4;
         let mut p = Packet::new_unchecked(&mut buf[..]);
         p.set_data_length(data_len as _)?;
         p.set_typ(MessageType::Custom);
@@ -419,7 +420,7 @@ mod app {
 
         let data = p.payload_mut()?;
         let mut s = 0;
-        for id in &[LED_BLINK, LED_STATE, LIT_TIME, BOARD_NAME] {
+        for id in &[LED_BLINK, LED_STATE, LIT_TIME, MessageId::BOARD_NAME] {
             let e = s + id.len();
             (&mut data[s..e]).copy_from_slice(id.as_bytes());
             data[e] = b'\0';
@@ -457,15 +458,15 @@ mod app {
             (MessageType::U8, LED_BLINK),
             (MessageType::U8, LED_STATE),
             (MessageType::U16, LIT_TIME),
-            (MessageType::Char, BOARD_NAME),
+            (MessageType::Char, MessageId::BOARD_NAME),
         ];
 
         for (typ, id) in VARS.iter() {
             let mut p = Packet::new_unchecked(&mut buf[..]);
-            if *id == BOARD_NAME {
-                p.set_data_length(typ.data_wire_size(BOARD_NAME.len()) as _)?;
+            if *id == MessageId::BOARD_NAME {
+                p.set_data_length(typ.array_wire_size_hint(BOARD_NAME.len()) as _)?;
             } else {
-                p.set_data_length(typ.data_wire_size(1) as _)?;
+                p.set_data_length(typ.wire_size_hint() as _)?;
             }
             p.set_typ(*typ);
             p.set_internal(false);
@@ -479,8 +480,8 @@ mod app {
                 LED_BLINK => data[0] = blink_enable,
                 LED_STATE => data[0] = led_state,
                 LIT_TIME => LittleEndian::write_u16(data, glow_time),
-                BOARD_NAME => data.copy_from_slice(BOARD_NAME.as_bytes()),
-                _ => (),
+                MessageId::BOARD_NAME => data.copy_from_slice(BOARD_NAME.as_bytes()),
+                _ => panic!("Invalid ID"),
             }
             p.set_checksum(p.compute_checksum()?)?;
             enqueue_packet(&p, prod)?;
